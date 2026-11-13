@@ -1,11 +1,20 @@
 import { useState, useEffect } from 'react';
 import { DragDropContext, type DropResult } from '@hello-pangea/dnd';
-import { KanbanSquare, Timer } from 'lucide-react';
+import { KanbanSquare, Timer, GraduationCap, ClipboardCheck } from 'lucide-react';
 import { COLUMNS, SEED_CARDS, type Card, type CardStatus } from './types';
 import Column from './components/Column';
 import { simulate25Hours } from './utils/sla';
 
 const STORAGE_KEY = 'kanban-learning-board-cards';
+const ROLE_STORAGE_KEY = 'kanban-learning-board-role';
+
+export type Role = 'student' | 'curator';
+
+function loadRole(): Role {
+  const stored = localStorage.getItem(ROLE_STORAGE_KEY);
+  if (stored === 'student' || stored === 'curator') return stored;
+  return 'student';
+}
 
 function loadCards(): Card[] {
   try {
@@ -52,6 +61,7 @@ function onDragEndHandler(
 
 export default function App() {
   const [cards, setCards] = useState<Card[]>(loadCards);
+  const [role, setRole] = useState<Role>(loadRole);
 
   useEffect(() => {
     try {
@@ -60,6 +70,38 @@ export default function App() {
       // ignore storage errors
     }
   }, [cards]);
+
+  useEffect(() => {
+    localStorage.setItem(ROLE_STORAGE_KEY, role);
+  }, [role]);
+
+  const handleCuratorAction = (cardId: string, action: 'approve' | 'reject') => {
+    if (action === 'approve') {
+      setCards((prev) =>
+        prev.map((card) =>
+          card.id === cardId
+            ? { ...card, status: 'done', review_started_at: null }
+            : card
+        )
+      );
+    } else {
+      const comment = window.prompt('Введите комментарий для ученика:') ?? '';
+      if (comment.trim()) {
+        setCards((prev) =>
+          prev.map((card) =>
+            card.id === cardId
+              ? {
+                  ...card,
+                  status: 'needs_rework',
+                  review_started_at: null,
+                  comment,
+                }
+              : card
+          )
+        );
+      }
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-slate-50 to-slate-100">
@@ -80,6 +122,30 @@ export default function App() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1 border border-slate-200">
+              <button
+                onClick={() => setRole('student')}
+                className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-md transition-all duration-150 ${
+                  role === 'student'
+                    ? 'bg-white text-slate-800 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <GraduationCap size={14} className="shrink-0" />
+                Ученик
+              </button>
+              <button
+                onClick={() => setRole('curator')}
+                className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-md transition-all duration-150 ${
+                  role === 'curator'
+                    ? 'bg-white text-slate-800 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <ClipboardCheck size={14} className="shrink-0" />
+                Куратор
+              </button>
+            </div>
             <button
               onClick={() => setCards((prev) => simulate25Hours(prev))}
               className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 hover:border-amber-300 transition-colors duration-150"
@@ -116,6 +182,8 @@ export default function App() {
                 key={column.id}
                 column={column}
                 cards={cards.filter((c) => c.status === column.id)}
+                role={role}
+                onCuratorAction={handleCuratorAction}
               />
             ))}
           </div>

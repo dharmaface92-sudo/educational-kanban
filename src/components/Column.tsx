@@ -13,6 +13,8 @@ import CardItem from './CardItem';
 interface ColumnProps {
   column: ColumnConfig;
   cards: Card[];
+  role: 'student' | 'curator';
+  onCuratorAction: (cardId: string, action: 'approve' | 'reject') => void;
 }
 
 const ICONS: Record<string, LucideIcon> = {
@@ -23,7 +25,7 @@ const ICONS: Record<string, LucideIcon> = {
   CheckCircle2,
 };
 
-export default function Column({ column, cards }: ColumnProps) {
+export default function Column({ column, cards, role, onCuratorAction }: ColumnProps) {
   const Icon = ICONS[column.icon] ?? Inbox;
   const totalSP = cards.reduce((sum, c) => sum + c.story_points, 0);
 
@@ -65,7 +67,7 @@ export default function Column({ column, cards }: ColumnProps) {
               </div>
             ) : (
               cards.map((card, index) => (
-                <CardItem key={card.id} card={card} index={index} />
+                <CardItem key={card.id} card={card} index={index} role={role} onCuratorAction={onCuratorAction} />
               ))
             )}
             {provided.placeholder}
